@@ -24,7 +24,7 @@ def return_alphabet(sequence_list):
     alphabet = sorted(list(alphabet))
     return alphabet, len(alphabet)
 
-def return_cleavage_position(cleavage_list):
+def return_cleavpos(cleavage_list):
     #Returns a list with the position of the cleavage point for each sequence in cleavage_list.
     position_list = [0] * len(cleavage_list)
     cont = 0
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     data_path = "/Users/bernardoveronese/Documents/INF442/INF442_Project2/Datasets/"
     data_file = "EUKSIG_13.red.txt"
     seq, cleav = read_sequence(data_path+data_file)
-    arr = return_cleavage_position(cleav)
+    arr = return_cleavpos(cleav)
     print(arr)
     alphabet, dim = return_alphabet(seq)
     print(alphabet)
