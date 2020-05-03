@@ -130,11 +130,12 @@ if __name__ == "__main__":
     cleavpos = return_cleavpos(cleav)
 
     # Defining train and test batches
-    train_batch, test_batch, cleav_pos_train, cleav_pos_test = train_test_split(seq, cleavpos, test_size=test_size)
+    train_batch, test_batch, cleav_pos_train, cleav_pos_test = train_test_split(seq, cleavpos, test_size=test_size,
+                                                                                random_state=42)
 
     # Creating model, fitting and predicting
     psm = PosScoringMatrix(p, q, train_batch, cleav_pos_train)
-    psm.fit(ignore_first=True)
+    psm.fit(alpha=alpha, ignore_first=True)
     predicted_cleav = psm.predict(test_batch, treshold, ignore_first=True)
 
     # Computing accuracy
@@ -145,7 +146,7 @@ if __name__ == "__main__":
                 accuracy += 1
 
     accuracy /= len(predicted_cleav)
-    print(str(100 * accuracy) + " %")
+    print("Accuracy: " + str(100 * accuracy) + " %")
     """for i in range(len(cleav_pos_test)):
         if i in predicted_cleav:
             print("("+str(predicted_cleav[i])+","+str(cleav_pos_test[i])+") Result: "+
