@@ -1,22 +1,11 @@
 import numpy as np
-from Models.DataProcessing import read_sequence, return_alphabet, return_cleavpos
-from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from Models.DataProcessing import read_sequence, return_alphabet, return_cleavpos, dict_from_alphabet
+from sklearn.model_selection import train_test_split, KFold
 
 
 def add_smoothing(num, denom, alpha=1):
     return (num + alpha) / (denom + alpha)
-
-
-def dict_from_alphabet(alphabet):
-    if alphabet is not None:
-        dict_alphabet = dict()
-        cont = 0
-        for letter in alphabet:
-            dict_alphabet[letter] = cont
-            cont += 1
-        return dict_alphabet
-    else:
-        return None
 
 
 class PosScoringMatrix:
@@ -57,7 +46,7 @@ class PosScoringMatrix:
             for i in range(self.p + self.q):
                 score[a, i] = add_smoothing(score[a, i], N, alpha)
 
-        #Computing total frequency of each letter
+        # Computing total frequency of each letter
         total_freq = np.zeros(dim)
         for letter in self.alphabet:
             for seq in self.seq_list:
@@ -65,7 +54,7 @@ class PosScoringMatrix:
                     if seq_letter == letter:
                         total_freq[d[letter]] += 1
 
-        total_freq = np.log(total_freq/N)
+        total_freq = np.log(total_freq / N)
 
         # Taking the logarithm
         for a in range(dim):
@@ -99,19 +88,29 @@ class PosScoringMatrix:
 
             n = len(test_seq)
             i = 0
-            while i < n - p - q:
+            while i < n - self.p - self.q:
                 ws = self.word_score(test_seq, i, i + self.p + self.q)
                 if ws > treshold:
                     if seq_cont not in cleav_dict:
-                        cleav_dict[seq_cont] = i + p
+                        cleav_dict[seq_cont] = i + self.p
                         ws_max = ws
                     elif ws > ws_max:
                         ws_max = ws
-                        cleav_dict[seq_cont] = i + p
+                        cleav_dict[seq_cont] = i + self.p
                 i += 1
             seq_cont += 1
 
         return cleav_dict
+
+    def accuracy(self, cleav_test_batch, cleav_predicted_batch):
+
+        accuracy = 0
+        for i in range(len(cleav_test_batch)):
+            if i in cleav_predicted_batch:
+                if cleav_predicted_batch[i] == cleav_test_batch[i]:
+                    accuracy += 1
+        accuracy /= len(cleav_predicted_batch)
+        return 100 * accuracy
 
 
 if __name__ == "__main__":
@@ -119,34 +118,65 @@ if __name__ == "__main__":
     # Hyperparameters
     p = 13
     q = 2
+    p_max = 15
+    q_max = 15
     alpha = 0.5
     test_size = 0.2
     treshold = -100
+    CV_k = 5
 
     # Data processing
     data_path = "/Users/bernardoveronese/Documents/INF442/INF442_Project2/Datasets/"
     data_file = "EUKSIG_13.red.txt"
     seq, cleav = read_sequence(data_path + data_file)
+    seq = np.array(seq)
     cleavpos = return_cleavpos(cleav)
 
-    # Defining train and test batches
-    train_batch, test_batch, cleav_pos_train, cleav_pos_test = train_test_split(seq, cleavpos, test_size=test_size,
-                                                                                random_state=42)
+    p_list = np.arange(p_max - 1)
+    q_list = np.arange(q_max - 1)
+    acc_matrix = np.zeros((p_max - 1, q_max - 1))
+
+    # K-fold cross validation
+    for pp in range(p_max - 1):
+        for qq in range(q_max - 1):
+            acc = []
+            kf = KFold(n_splits=CV_k)
+            for train_index, test_index in kf.split(seq):
+                train_batch, test_batch = seq[train_index], seq[test_index]
+                cleavpos_train, cleavpos_test = cleavpos[train_index], cleavpos[test_index]
+                psm = PosScoringMatrix(pp + 1, qq + 1, train_batch, cleavpos_train)
+                psm.fit(alpha, ignore_first=True)
+                pred_cleav = psm.predict(test_batch, treshold, ignore_first=True)
+                acc.append(psm.accuracy(cleavpos_test, pred_cleav))
+            acc_matrix[pp][qq] = np.mean(acc)
+
+    # Plotting
+    print(acc_matrix)
+    fig, ax = plt.subplots()
+    im = ax.imshow(acc_matrix)
+    ax.set_xticks(p_list)
+    ax.set_yticks(q_list)
+    ax.set_xticklabels(p_list + 1)
+    ax.set_yticklabels(q_list + 1)
+    ax.set_ylim(len(q_list) - 0.5, -0.5)
+    for i in range(q_max - 1):
+        for j in range(p_max - 1):
+            text = ax.text(j, i, "{:.2f}".format(acc_matrix[i, j]),
+                           ha="center", va="center", color="w")
+    ax.set_title("Accuracy heatmap")
+    # fig.tight_layout()
+    plt.show()
+
+    # train_batch, test_batch, cleav_pos_train, cleav_pos_test = train_test_split(seq, cleavpos, test_size=test_size, random_state=42)
 
     # Creating model, fitting and predicting
-    psm = PosScoringMatrix(p, q, train_batch, cleav_pos_train)
+    """psm = PosScoringMatrix(p, q, train_batch, cleav_pos_train)
     psm.fit(alpha=alpha, ignore_first=True)
     predicted_cleav = psm.predict(test_batch, treshold, ignore_first=True)
 
     # Computing accuracy
-    accuracy = 0
-    for i in range(len(cleav_pos_test)):
-        if i in predicted_cleav:
-            if predicted_cleav[i] == cleav_pos_test[i]:
-                accuracy += 1
-
-    accuracy /= len(predicted_cleav)
-    print("Accuracy: " + str(100 * accuracy) + " %")
+    accuracy = psm.accuracy(cleav_pos_test, predicted_cleav)
+    print("Accuracy: "+str(accuracy)+"%")"""
     """for i in range(len(cleav_pos_test)):
         if i in predicted_cleav:
             print("("+str(predicted_cleav[i])+","+str(cleav_pos_test[i])+") Result: "+

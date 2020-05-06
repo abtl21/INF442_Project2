@@ -1,4 +1,5 @@
 from collections import Counter
+import numpy as np
 
 
 def read_sequence(datapath):
@@ -47,7 +48,7 @@ def return_cleavpos(cleavage_list):
         position_list[cont] = index
         cont += 1
 
-    return position_list
+    return np.array(position_list)
 
 
 def all_subsequences(sequence, p, q):
@@ -58,6 +59,17 @@ def all_subsequences(sequence, p, q):
         subseq_list.append(sequence[i:i + p + q])
         i += 1
     return subseq_list
+
+def dict_from_alphabet(alphabet):
+    if alphabet is not None:
+        dict_alphabet = dict()
+        cont = 0
+        for letter in alphabet:
+            dict_alphabet[letter] = cont
+            cont += 1
+        return dict_alphabet
+    else:
+        return None
 
 
 if __name__ == "__main__":
