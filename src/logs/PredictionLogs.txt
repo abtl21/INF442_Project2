@@ -1,0 +1,96 @@
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 1, 'q': 1, 'C': -100}
+Accuracy: 9.055 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 1, 'q': 2, 'C': -100}
+Accuracy: 8.358 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 1, 'q': 3, 'C': -100}
+Accuracy: 8.756 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 1, 'q': 4, 'C': -100}
+Accuracy: 10.348 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 2, 'q': 1, 'C': -100}
+Accuracy: 24.776 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 2, 'q': 2, 'C': -100}
+Accuracy: 23.483 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 2, 'q': 3, 'C': -100}
+Accuracy: 23.383 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 2, 'q': 4, 'C': -100}
+Accuracy: 25.771 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 3, 'q': 1, 'C': -100}
+Accuracy: 26.269 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 3, 'q': 2, 'C': -100}
+Accuracy: 26.866 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 3, 'q': 3, 'C': -100}
+Accuracy: 25.970 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 3, 'q': 4, 'C': -100}
+Accuracy: 27.363 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 4, 'q': 1, 'C': -100}
+Accuracy: 39.701 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 4, 'q': 2, 'C': -100}
+Accuracy: 41.891 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 4, 'q': 3, 'C': -100}
+Accuracy: 42.488 % 
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: Position Scoring Matrix
+Method: 5-fold cross-validation 
+Hyperparameters: {'p': 4, 'q': 4, 'C': -100}
+Accuracy: 42.488 % 
