@@ -2,7 +2,7 @@ from collections import Counter
 import numpy as np
 
 
-def read_sequence(datapath):
+def read_sequence(filepath):
     """
     Return the list of protein sequences and cleavage sites from datapath.
 
@@ -20,7 +20,7 @@ def read_sequence(datapath):
     cleavage_site = []
 
     # Loop condition conveniently discards the description lines
-    with open(datapath, 'r') as f:
+    with open(filepath, 'r') as f:
         while f.readline() is not '':
             # Slicing with :-1 to discard "\n" character
             protein_sequence.append(f.readline()[:-1])
@@ -64,6 +64,13 @@ def return_cleavpos(cleavage_list):
     return np.array(position_list)
 
 
+def get_features(filepath):
+    sequence_list, cleavage_site = read_sequence(filepath)
+    cleavage_pos = return_cleavpos(cleavage_site)
+    sequence_list = np.array(sequence_list)
+    return sequence_list, cleavage_pos
+
+
 def dict_from_alphabet(alphabet):
     # Return a dictionary encoding a number to each letter in the list alphabet. Alphabet must be a list of char.
     if alphabet is not None:
@@ -104,6 +111,12 @@ def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet):
                 cls_cleav_pos.append(-1)
 
     return np.array(encoding_list), np.array(cls_cleav_pos)
+
+def get_encoded_features(filepath, p, q):
+    sequence_list, cleav_pos = get_features(filepath)
+    alphabet = return_alphabet(sequence_list)
+    return seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet)
+
 
 
 """if __name__ == "__main__":
