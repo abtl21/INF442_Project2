@@ -15,25 +15,103 @@ seq, cleav = read_sequence(data_path + data_file)
 cleavpos = return_cleavpos(cleav)
 alphabet = return_alphabet(seq)
 
+#Creating all n-sized subsequences with labels, by 'sliding the window' to have a binary classification problem
+d = dict_from_alphabet(alphabet)
 
-# solution presented in 3.2 second paragraph
-def phi1(word):
-    # getting all necessary dimensions info
-    n = p + q
-    if self.alphabet is None:
-        self.alphabet = return_alphabet(self.seq_list)
-    dim = len(self.alphabet)
-    d = dict_from_alphabet(self.alphabet)
+alllongseq=[]
+for sequence in seq :
+  sequence_encoded=[]
+  for letter in sequence :
+    sequence_encoded.append(d[letter])
+  allseq.append(sequence_encoded)
 
-    # encoding the word
-    encoding = [0] * (dim * n)
-    i = 0
-    for letter in word:
-        encoding[dim * i + d[letter]] = 1
-    return (encoding)
+x=[]
+y=[]
+cont=0
+for sequence in alllongseq :
+  for i in range(len(sequence)-n) :
+    X.append(sequence[i:i+n])
+    if (cleav_pos[cont]==i+p) :
+      Y.append(1)
+    else :
+      Y.append(0)
+  cont +=1
+
+X=np.array(x)
+Y=np.array(y)
+
+print("data augmented (created all n-sized subsequences with labels, by sliding the window)")
+
+################################################Similarity kernel
 
 
+#solution presented in 3.2 second paragraph
+def K1(u,v):
+def phi1(word) :
+  count = 0
+  #getting all necessary dimensions info
+  for i in range(n) :
+    if (u[i]==v[i]) :
+      count+=1
 
+def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels)
+    #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
+    #fitting 
+    clf=svm.SVC(kernel=K1)
+    clf.fit(train_data,train_labels)
+    print("fitting done...")
+
+    #computing accuracy
+    print("predicting...")
+    accuracy=0
+    cont=0
+    for sequence in test_data :
+      predict=clf.predict(sequence)[0][0]
+      if (predict==test_labels[cont]) :
+        accuracy+=1
+      cont++
+    accuracy /= len(test_labels)
+    print("Accuracy computed with similarity kernel")
+    print(str(100*accuracy)+" %")
+
+########################Substitution matrix
+
+#Importer M ?????
+
+#Score
+def s(a,b) :
+  n=p+q
+  n=p+q
+  if self.alphabet is None:
+  sum=0
+    self.alphabet = return_alphabet(self.seq_list)
+  for i in range(n) :
+  dim = len(self.alphabet)
+    #sum+=M(a[i],b[i]) UNCOMMENT when M is imported
+  d = dict_from_alphabet(self.alphabet)
+  return(sum)
+
+def K2(a,b,gamma) :
+  return (exp(-gamma*s(a,b)))
+
+def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels)
+    #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
+
+    rbf=svm.SVC(kernel=K2)
+    rbf.fit(train_data,train_labels)
+    print("fitting done...")
+
+    print("predicting...")
+    accuracy=0
+    cont=0
+    for sequence in test_data :
+      predict=clf.predict(sequence)[0][0]
+      if (predict==test_labels[cont]) :
+        accuracy+=1
+      cont+=1
+    accuracy /= len(predicted_cleav)
+    print("Accuracy computed with substitution matrix")
+    print(str(100*accuracy)+" %")
 
 if __name__ == "__main__":
 
