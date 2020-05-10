@@ -54,7 +54,7 @@ def phi1(word) :
     if (u[i]==v[i]) :
       count+=1
 
-def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels)
+def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
     #fitting 
     clf=svm.SVC(kernel=K1)
@@ -94,7 +94,7 @@ def s(a,b) :
 def K2(a,b,gamma) :
   return (exp(-gamma*s(a,b)))
 
-def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels)
+def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
 
     rbf=svm.SVC(kernel=K2)

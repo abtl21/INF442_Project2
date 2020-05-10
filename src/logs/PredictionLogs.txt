@@ -224,3 +224,16 @@ Score summary:
 	 balanced_accuracy : 75.293 %
 	 f1 : 57.318 %
 	 roc_auc : 94.072 %
+----------------------------------------------------------------------
+Dataset: EUKSIG_13
+Estimator: SVC_rbf
+Model assessment method: 5-fold cross-validation 
+Hyperparameters: 
+	 p = 1
+	 q = Default
+	 C = Default
+	 gamma = Default
+Score summary: 
+	 balanced_accuracy : 75.293 %
+	 f1 : 57.318 %
+	 roc_auc : 94.072 %
