@@ -14,33 +14,8 @@ data_file = "EUKSIG_13.red.txt"
 seq, cleav = read_sequence(data_path + data_file)
 cleavpos = return_cleavpos(cleav)
 alphabet = return_alphabet(seq)
-
-#Creating all n-sized subsequences with labels, by 'sliding the window' to have a binary classification problem
 d = dict_from_alphabet(alphabet)
 
-alllongseq=[]
-for sequence in seq :
-  sequence_encoded=[]
-  for letter in sequence :
-    sequence_encoded.append(d[letter])
-  allseq.append(sequence_encoded)
-
-x=[]
-y=[]
-cont=0
-for sequence in alllongseq :
-  for i in range(len(sequence)-n) :
-    X.append(sequence[i:i+n])
-    if (cleav_pos[cont]==i+p) :
-      Y.append(1)
-    else :
-      Y.append(0)
-  cont +=1
-
-X=np.array(x)
-Y=np.array(y)
-
-print("data augmented (created all n-sized subsequences with labels, by sliding the window)")
 
 ################################################Similarity kernel
 
@@ -54,12 +29,13 @@ def phi1(word) :
     if (u[i]==v[i]) :
       count+=1
 
-def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
+def PredictionSimilarityKernel(train_data,train_labels,test_data,test_labels):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
-    #fitting 
+    #fitting
+    print("fitting...")
     clf=svm.SVC(kernel=K1)
     clf.fit(train_data,train_labels)
-    print("fitting done...")
+    print("OK")
 
     #computing accuracy
     print("predicting...")
@@ -76,30 +52,29 @@ def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
 
 ########################Substitution matrix
 
-#Importer M ?????
+#hyperparameters : substitution matrix and bandwidth
+
+path="" #change it to your convenience to choose one of the matrices
+M=get_similarity_matrix(path,d)
+
+gamma=1
 
 #Score
 def s(a,b) :
   n=p+q
-  n=p+q
-  if self.alphabet is None:
-  sum=0
-    self.alphabet = return_alphabet(self.seq_list)
   for i in range(n) :
-  dim = len(self.alphabet)
-    #sum+=M(a[i],b[i]) UNCOMMENT when M is imported
-  d = dict_from_alphabet(self.alphabet)
+    sum+=M[a[i]][b[i]]
   return(sum)
 
-def K2(a,b,gamma) :
+def K2(a,b) :
   return (exp(-gamma*s(a,b)))
 
 def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
-
+    print("fitting ...")
     rbf=svm.SVC(kernel=K2)
     rbf.fit(train_data,train_labels)
-    print("fitting done...")
+    print("OK")
 
     print("predicting...")
     accuracy=0
