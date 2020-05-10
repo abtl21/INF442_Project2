@@ -28,6 +28,44 @@ def read_sequence(filepath):
 
     return protein_sequence, cleavage_site
 
+def get_similarity_matrix(filepath,d) :
+    """
+    Retruns the similarity matrix as an array
+    
+    The data file must follow the pattern : 
+    -6 lines of comments
+    -7th line is a blank space followed by all column entries
+    -following lines follow the pattern : the line entry followed by the numbers
+    
+    Example :
+    
+    #  Matrix made by matblas from blosum40.iij
+    #  * column uses minimum score
+    #  BLOSUM Clustered Scoring Matrix in 1/4 Bit Units
+    #  Blocks Database = /data/blocks_5.0/blocks.dat
+    #  Cluster Percentage: >= 40
+    #  Entropy =   0.2851, Expected =  -0.2090
+       A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  Z  X  *
+    A  5 -2 -1 -1 -2  0 -1  1 -2 -1 -2 -1 -1 -3 -2  1  0 -3 -2  0 -1 -1  0 -6 
+    R -2  9  0 -1 -3  2 -1 -3  0 -3 -2  3 -1 -2 -3 -1 -2 -2 -1 -2 -1  0 -1 -6 
+    
+    d is the dictionnary for the equivalence letters<->numbers, which is not guaranteed to be the 'natural one'
+    """
+    
+    M=np.eyes(23,23)
+    with open(filepath, 'r') as f:
+        #discards description lines
+        for i in range (7) :
+            f.readline()
+        #we must remember the 7th line
+        column_entries=f.readline()
+        #then fill the matrix
+        while f.readline() is not '':
+            line=f.readline()
+            letter1=line[0]
+            for i in range(1,len(line)) :
+                M[d[letter1]][d[i]]=line[i]
+     return(M)
 
 def return_alphabet(sequence_list):
     # Return the alphabet present in sequence_list. Useful for minimising the dimension for the SVM classifier.
