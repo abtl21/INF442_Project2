@@ -19,12 +19,8 @@ d = dict_from_alphabet(alphabet)
 
 ################################################Similarity kernel
 
-
-#solution presented in 3.2 second paragraph
 def K1(u,v):
-def phi1(word) :
   count = 0
-  #getting all necessary dimensions info
   for i in range(n) :
     if (u[i]==v[i]) :
       count+=1
@@ -109,6 +105,3 @@ if __name__ == "__main__":
         #print("(p, q) = (", p, q, ") Score (method = accuracy) : {:.4f}".format(np.mean(csv_score)))
         print("(p, q) = (", p, q, ") Score (method = balanced accuracy) : {:.4f}".format(np.mean(csv_score_balanced)))
         #print("(p, q) = (", p, q, ") Score (method = roc_auc) : {:.4f}".format(np.mean(csv_score_roc)))
-
-
-
