@@ -52,20 +52,24 @@ def get_similarity_matrix(filepath,d) :
     d is the dictionnary for the equivalence letters<->numbers, which is not guaranteed to be the 'natural one'
     """
     
-    M=np.eyes(23,23)
+    M=np.eye(23,23)
     with open(filepath, 'r') as f:
         #discards description lines
-        for i in range (7) :
+        for i in range (6) :
             f.readline()
         #we must remember the 7th line
         column_entries=f.readline()
+        print(column_entries)
         #then fill the matrix
-        while f.readline() is not '':
-            line=f.readline()
+        line=f.readline()
+        while (line!=''):
             letter1=line[0]
-            for i in range(1,len(line)-1) : #not reading the last character which is \n
-                M[d[letter1]][d[i]]=line[i]
-     return(M)
+            if (letter1 in d):
+                for i in range(1,len(line)-1) :#not reading the last character which is \n
+                    if (column_entries[i] in d) :
+                        M[d[letter1]][d[column_entries[i]]]=line[i]
+            line=f.readline()
+    return(M)
 
 def return_alphabet(sequence_list):
     # Return the alphabet present in sequence_list. Useful for minimising the dimension for the SVM classifier.
