@@ -19,30 +19,50 @@ d = dict_from_alphabet(alphabet)
 
 ################################################Similarity kernel
 
-def K1(u,v):
-  count = 0
-  for i in range(n) :
-    if (u[i]==v[i]) :
-      count+=1
+def get(u,i):
+    #gets the i-th letter in the encoded sequence u convention : first letter is 0-th
+    dim = 1
+    cont= dim*i
+    while (u[cont]==0).all() :
+        cont+=1
+    return (cont-i*dim)
 
-def PredictionSimilarityKernel(train_data,train_labels,test_data,test_labels):
+def K1(U,V) :
+    #U,V are two MATRICES
+    n_samples_1=U.shape[0]
+    n_samples_2=V.shape[1]
+    W=np.eye(n_samples_1,n_samples_2)
+    
+    for k in range(n_samples_1) :
+        for j in range(n_samples_2):
+            count = 0
+            for i in range(p+q) :
+              ui=get(U[k],i)
+              vi=get(V[j],i)
+              if (ui==vi) :
+                  count+=1
+            W[k][j]=count
+    return(W)           
+  
+
+def PredictionSimilarityKernel(train_d,train_l,test_d,test_l):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
     #fitting
     print("fitting...")
     clf=svm.SVC(kernel=K1)
-    clf.fit(train_data,train_labels)
+    clf.fit(train_d,train_l)
     print("OK")
 
     #computing accuracy
     print("predicting...")
     accuracy=0
     cont=0
-    for sequence in test_data :
+    for sequence in test_d :
       predict=clf.predict(sequence)[0][0]
-      if (predict==test_labels[cont]) :
+      if (predict==test_l[cont]) :
         accuracy+=1
-      cont++
-    accuracy /= len(test_labels)
+      cont+=1
+    accuracy /= len(test_l)
     print("Accuracy computed with similarity kernel")
     print(str(100*accuracy)+" %")
 
@@ -50,20 +70,30 @@ def PredictionSimilarityKernel(train_data,train_labels,test_data,test_labels):
 
 #hyperparameters : substitution matrix and bandwidth
 
-path="" #change it to your convenience to choose one of the matrices
+path="C:/Users/antoi/OneDrive/Bureau/Polytechnique-2A/P3/INF 422/PI/INF442_Project2-master/src/data/Substitution matrices/BLOSUM62" #change it to your convenience to choose one of the matrices
 M=get_similarity_matrix(path,d)
 
 gamma=1
 
 #Score
 def s(a,b) :
+  sum=0
   n=p+q
   for i in range(n) :
-    sum+=M[a[i]][b[i]]
+      ai=get(a,i)
+      bi=get(b,i)
+      sum+=M[ai][bi]
   return(sum)
 
-def K2(a,b) :
-  return (exp(-gamma*s(a,b)))
+def K2(U,V) :
+    n_samples_1=U.shape[0]
+    n_samples_2=V.shape[1]
+    W=np.eye(n_samples_1,n_samples_2)
+    
+    for k in range(n_samples_1) :
+        for j in range(n_samples_2):
+            W[k][j]=math.exp(-gamma*s(U[k],V[j]))
+    return(W)
 
 def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
@@ -83,6 +113,7 @@ def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
     accuracy /= len(predicted_cleav)
     print("Accuracy computed with substitution matrix")
     print(str(100*accuracy)+" %")
+
 
 if __name__ == "__main__":
 
