@@ -1,16 +1,13 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split, KFold, StratifiedKFold
-
 from src.models.Estimator import Estimator
 from src.features.build_features import *
 from src.models.Model import Model
 from src.utils import *
 from src.visualization.heatmap import *
+from sklearn.model_selection import train_test_split
 
 # Hyperparameters
-p_max = 13
-q_max = 13
+p_max = 16
+q_max = 16
 p = 11
 q = 4
 alpha = 0.5
@@ -36,15 +33,18 @@ def psm_accuracy(cleav_test_batch, cleav_predicted_batch):
 
 class PosScoringMatrix(Estimator):
 
-    def __init__(self, p, q, C, alpha=0.5, ignore_first=True, metric='balanced_accuracy', write_log=True):
+    def __init__(self, p, q, C, alpha=0.5, ignore_first=True, write_log=True):
 
-        super().__init__(p, q, metric, write_log)
+        super().__init__(p, q, write_log)
         self.C = C
         self.alpha = alpha
         self.ignore_first = ignore_first
         self.alphabet = None
         self.d = None
         self.score_matrix = None
+
+    def set_params(self, **kwargs):
+        super().set_params(**kwargs)
 
     def word_score(self, sequence, lbound, ubound):
 
@@ -159,46 +159,38 @@ class PosScoringMatrix(Estimator):
 
         return cleav_predictor
 
-    """def scorer(self, seq_list_, cleavpos_, scoring='f1'):
-        acc = []
-
-        # Cross-validation loop
-        for train_index, test_index in self.cv.split(seq_list_):
-            train_batch_, test_batch_ = seq_list_[train_index], seq_list_[test_index]
-            cleavpos_train_, cleavpos_test_ = cleavpos_[train_index], cleavpos_[test_index]
-            self.fit(train_batch_, cleavpos_train_)
-            y_pred = self.predict(test_batch_)
-            y_true = self.get_test_labels(test_batch_, cleavpos_test_)
-            acc.append(self.score_metrics(y_true, y_pred))
-
-        return np.mean(acc)"""
-
     def score(self, seq_list, cleavpos, cv=5, scoring=METRIC_LIST):
         return super().score(seq_list, cleavpos, cv=cv, scoring=scoring)
 
 
 if __name__ == "__main__":
     # Data processing
-    data_file = "EUKSIG_13.red.txt"
+    data_file = "SIG_13.red.txt"
     seq_list, cleavpos = get_features(DATA_PATH + data_file)
+    X_train, X_test, Y_train, Y_test = train_test_split(seq_list, cleavpos, test_size=0.2, random_state=42)
 
     p_list = np.arange(p_max - 1)
     q_list = np.arange(q_max - 1)
-    acc_matrix = np.zeros((p_max - 1, q_max - 1))
+    matrix_dict = dict(zip(METRIC_LIST, [np.zeros((p_max - 1, q_max - 1)) for i in range(len(METRIC_LIST))]))
 
     # Model training and assessment
-    params = [p, q, C]
-    estimator = PosScoringMatrix(p, q, C, alpha)
-    model = Model(estimator, params, cv)
-    X, Y = get_features(DATA_PATH + data_file)
-    score = model.evaluate(X, Y)
+    for pp in p_list:
+        for qq in q_list:
+            estimator = PosScoringMatrix(pp + 1, qq + 1, C, alpha)
+            model = Model(estimator, [pp + 1, qq + 1, C], cv)
+            score = model.evaluate(X_train, Y_train)
+            for metric in METRIC_LIST:
+                matrix_dict[metric][pp][qq] = score[metric]
 
     # Plotting
-    """fig, ax = plt.subplots()
+    p_string = ["p="+str(p+1) for p in p_list]
+    q_string = ["q=" + str(q+1) for q in q_list]
+    for metric in METRIC_LIST:
+        fig, ax = plt.subplots()
 
-    im, cbar = heatmap(acc_matrix, p_list, q_list, ax=ax,
-                       cmap="YlGn", cbarlabel="Accuracy heatmap (%)")
-    texts = annotate_heatmap(im, valfmt="{x:.1f} t")
+        im, cbar = heatmap(matrix_dict[metric], p_string, q_string, ax=ax,
+                           cmap="YlGn", cbarlabel="Accuracy heatmap, metric={}".format(metric))
+        texts = annotate_heatmap(im, valfmt="{x:.2f}")
 
-    fig.tight_layout()
-    plt.show()"""
+        fig.tight_layout()
+        plt.show()

@@ -23,7 +23,7 @@ cv_k = 5
 
 def get_kernel_choice():
     kernels = ['linear', 'poly', 'rbf', 'sigmoid', 'quit']
-    msg_string = "Available kernels: linear, poly, rbf, sigmoid. Enter choice of kernel: "
+    msg_string = "Available kernels: linear, poly, rbf, sigmoid. \n Enter choice of kernel: "
     kernel_ = []
     while True:
         try:

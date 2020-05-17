@@ -14,7 +14,7 @@ q = 4
 C = 1
 
 
-def choose_estimator(*args, **kwargs):
+def choose_estimator(kernel=None, *args, **kwargs):
     est_label = []
     kernel_ = []
     estimator = None
@@ -35,7 +35,10 @@ def choose_estimator(*args, **kwargs):
             print('Substitution Matrix method not yet implemented.')
             continue
         elif est_label == 'SVM':
-            kernel_ = get_kernel_choice()
+            if kernel is None:
+                kernel_ = get_kernel_choice()
+            else:
+                kernel_ = kernel
             estimator = SVC(kernel=kernel_, *args, **kwargs)
             break
         elif est_label == 'quit':
@@ -50,16 +53,29 @@ def choose_estimator(*args, **kwargs):
 if __name__ == '__main__':
     # Hyperparameters
     params = [C]
-
+    paramgrid = {'C': np.logspace(-2, 2, num=5, base=2)}
+    paramgrid_poly = {'C': np.logspace(-2, 2, num=5, base=2),
+                      'degree': [1, 2, 3, 4, 5]
+                      }
     # Optional keyword arguments
     class_weight = {'class_weight': 'balanced'}
+    kernel_list = ['linear', 'sigmoid']
 
     # Defining estimator and model
-    estimator = choose_estimator(*params, **class_weight)
-    model = Model(estimator, params)
+    for kernel in kernel_list:
+        try:
+            estimator = SVC(kernel=kernel, class_weight='balanced')
+            model = Model(estimator, params)
 
-    # Getting features
-    X, Y = get_encoded_features(DATA_PATH + data_file, p, q)
+            # Getting features
+            X, Y = get_encoded_features(DATA_PATH + data_file, p, q)
 
-    # Evaluating model
-    score = model.evaluate(X, Y)
+            # Evaluating model
+            score = model.evaluate(X, Y)
+            if kernel == 'poly':
+                search_grid = model.search(X, Y, paramgrid_poly)
+            else:
+                search_grid = model.search(X, Y, paramgrid)
+            print(search_grid.cv_results_)
+        except:
+            print("Error was raised.")

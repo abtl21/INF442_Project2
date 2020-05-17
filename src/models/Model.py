@@ -4,6 +4,7 @@ from src.decorators import report_eval
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, roc_auc_score, precision_score, recall_score, \
     f1_score
 from warnings import warn
+from itertools import product
 
 from src.utils import *
 
@@ -43,7 +44,7 @@ class Model:
         self.write_log = write_log
 
     # Decorator for writing evaluation results in logs
-    @report_eval(dataset="EUKSIG_13")
+    @report_eval(dataset="SIG_13")
     def evaluate(self, X, y, scoring=None):
         """
         Return the score of the estimator applied on the feature data X and target labels y.
@@ -81,22 +82,48 @@ class Model:
 
         return score_dict
 
-    def search(self, X, y, param_grid=None, param_dist=None, search_type='grid'):
-        if not (search_type == 'grid' or search_type == 'randomized'):
-            raise ValueError("search_type must be grid or randomized. Got {} instead.".format(search_type))
+    def search(self, X, y, param_grid, scoring=None, best_score="f1", *args, **kwargs):
+        param_list = list(param_grid.keys())
 
-        if search_type == 'grid':
-            if param_grid is None or not isinstance(param_grid, dict):
-                raise ValueError("Invalid parameter grid.")
+        # Defining scoring
+        if scoring is None:
+            eval_metric = self.score_metric
+        else:
+            eval_metric = scoring
 
-            search = GridSearchCV(self.estimator, param_grid)
+        # Different methods for custom or built-in estimators
+        if not self.custom:
+            # Calling GridSearchCV on the estimator, parameters
+            gridresults = GridSearchCV(self.estimator, param_grid, scoring=eval_metric, cv=self.cv,
+                                       refit=best_score, *args, **kwargs)
+            gridresults.fit(X, y)
+            return gridresults
 
-        elif search_type == 'randomized':
-            if param_dist is None:
-                raise ValueError("Invalid parameter distributions.")
+        if self.custom:
+            # Creating search dictionary that will store the best results for each metric
+            best_search_dict = dict()
 
-            search = RandomizedSearchCV(self.estimator, param_dist)
+            # Grid search
+            for grid_pair in product(*list(param_grid.values())):
+                # Update estimator's parameteres for each iteration
+                search_args = dict(zip(list(param_grid.keys()), grid_pair))
+                self.estimator.set_params(**search_args)
 
-        search.fit(X, y)
+                # Getting the score for the iteration's parameters
+                search_dict = self.estimator.score(X, y, cv=self.cv, scoring=eval_metric)
+                if isinstance(eval_metric, list):
+                    for metric in eval_metric:
+                        if metric in best_search_dict:
+                            if search_dict[metric] > best_search_dict[metric]:
+                                best_search_dict[metric] = [search_dict[metric], dict(zip(param_list, grid_pair))]
+                        else:
+                            best_search_dict[metric] = [search_dict[metric], dict(zip(param_list, grid_pair))]
+                else:
+                    metric = eval_metric
+                    if metric in best_search_dict:
+                        if search_dict[metric] > best_search_dict[metric]:
+                            best_search_dict[metric] = [search_dict[metric], dict(zip(param_list, grid_pair))]
+                    else:
+                        best_search_dict[metric] = [search_dict[metric], dict(zip(param_list, grid_pair))]
 
-        return search
+            return best_search_dict

@@ -31,12 +31,26 @@ class Estimator:
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, p, q, metric='balanced_accuracy', write_log=True):
+    def __init__(self, p, q, write_log=True):
         self.p = p
         self.q = q
-        self.score_metric = metric
         self.write_log = write_log
         self.fitted = False
+
+    def set_params(self, **kwargs):
+        """
+        Update estimator parameters.
+
+        **kwargs exists for compatibilty to accomodate sub-classes with different sets of parameters.
+
+        Examples
+        --------
+        psm = PosScoringMatrix(1, 1, 1) # p, q and C
+        psm.set_params(p=2, q=2, C=2)
+        """
+        for key in kwargs.keys():
+            if hasattr(self, key):
+                setattr(self, key, kwargs[key])
 
     @abc.abstractmethod
     def fit(self, X_train, Y_train):
