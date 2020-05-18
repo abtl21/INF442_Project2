@@ -188,6 +188,37 @@ def get_encoded_features(filepath, p, q):
     alphabet = return_alphabet(sequence_list)
     return seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet)
 
+def seq_list_encoding2(sequence_list, cleav_pos, p, q, alphabet):
+    """
+    Return the list of all possible subsequence of aminoacids of fixed length word_length in a given list of protein
+    sequences, but with a different method : instead of the 1s and 0s, the returned arrays are the same size as the corresponding proteins,
+    with amino acids replaced by corresponding integers. Simplifies custom kernel definition.
+
+    Return a corresponding list of 1s and -1s depending on whether the cleavage site in included in a
+    given subsequence or not.
+    """
+    encoding_list = []
+    cls_cleav_pos = []
+    d = dict_from_alphabet(alphabet)
+    word_length = p + q
+
+    for cp_iter in range(len(sequence_list)):
+        for seq_iter in range(len(sequence_list[cp_iter]) - word_length):
+            wordarray = np.zeros(word_length)
+            for word_iter in range(word_length):
+                wordarray[word_iter]=d[sequence_list[cp_iter][seq_iter + word_iter]]
+            encoding_list.append(wordarray)
+            if cleav_pos[cp_iter] == seq_iter + p:
+                cls_cleav_pos.append(1)
+            else:
+                cls_cleav_pos.append(-1)
+
+    return np.array(encoding_list), np.array(cls_cleav_pos)
+
+def get_encoded_features2(filepath, p, q):
+    sequence_list, cleav_pos = get_features(filepath)
+    alphabet = return_alphabet(sequence_list)
+    return seq_list_encoding2(sequence_list, cleav_pos, p, q, alphabet)
 
 """if __name__ == "__main__":
     # Functionality testing
