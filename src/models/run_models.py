@@ -53,13 +53,14 @@ def choose_estimator(kernel=None, *args, **kwargs):
 if __name__ == '__main__':
     # Hyperparameters
     params = [C]
-    paramgrid = {'C': np.logspace(-2, 2, num=5, base=2)}
-    paramgrid_poly = {'C': np.logspace(-2, 2, num=5, base=2),
+    paramgrid = {'C': np.logspace(-4, -1, num=2, base=2),
+                 'gamma' : np.logspace(-3, 2, num=5, base=10)}
+    paramgrid_poly = {'C': np.logspace(-4, 0, num=5, base=2),
                       'degree': [1, 2, 3, 4, 5]
                       }
     # Optional keyword arguments
     class_weight = {'class_weight': 'balanced'}
-    kernel_list = ['linear', 'sigmoid']
+    kernel_list = ['rbf']
 
     # Defining estimator and model
     for kernel in kernel_list:
@@ -78,4 +79,5 @@ if __name__ == '__main__':
                 search_grid = model.search(X, Y, paramgrid)
             print(search_grid.cv_results_)
         except:
+            # Not ideal, but we don't want to spoil hours of calculation...
             print("Error was raised.")
