@@ -16,30 +16,27 @@ cleavpos = return_cleavpos(cleav)
 alphabet = return_alphabet(seq)
 d = dict_from_alphabet(alphabet)
 
+sequence,labels=get_encoded_features2(data_path, p, q)
+N=len(sequence)
 
 ################################################Similarity kernel
 
-def get(u,i):
-    #gets the i-th letter in the encoded sequence u convention : first letter is 0-th
-    dim = 1
-    cont= dim*i
-    while (u[cont]==0).all() :
-        cont+=1
-    return (cont-i*dim)
+def K1(U,V):
+    #U and V are encoded as 0s and 1s
+    return (np.dot(U,V.T))
 
-def K1(U,V) :
-    #U,V are two MATRICES
+def K3(U,V) :
+    #Uand V are sequences encoded by the number corresponding to the letter with d.
     n_samples_1=U.shape[0]
-    n_samples_2=V.shape[1]
+    n_samples_2=V.shape[0]
+
     W=np.eye(n_samples_1,n_samples_2)
     
     for k in range(n_samples_1) :
         for j in range(n_samples_2):
             count = 0
             for i in range(p+q) :
-              ui=get(U[k],i)
-              vi=get(V[j],i)
-              if (ui==vi) :
+              if (U[k][i]==V[j][i]) :
                   count+=1
             W[k][j]=count
     return(W)           
@@ -48,71 +45,78 @@ def K1(U,V) :
 def PredictionSimilarityKernel(train_d,train_l,test_d,test_l):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
     #fitting
-    print("fitting...")
+    #print("fitting...")
     clf=svm.SVC(kernel=K1)
     clf.fit(train_d,train_l)
-    print("OK")
+    #print("OK")
 
     #computing accuracy
-    print("predicting...")
+    #print("predicting...")
     accuracy=0
     cont=0
     for sequence in test_d :
-      predict=clf.predict(sequence)[0][0]
+      predict=clf.predict(sequence.reshape(1,-1))[0]
       if (predict==test_l[cont]) :
         accuracy+=1
       cont+=1
     accuracy /= len(test_l)
-    print("Accuracy computed with similarity kernel")
-    print(str(100*accuracy)+" %")
+    #print("Accuracy computed with similarity kernel")
+    #print(str(100*accuracy)+" %")
+    return(accuracy)
 
 ########################Substitution matrix
 
 #hyperparameters : substitution matrix and bandwidth
 
-path="C:/Users/antoi/OneDrive/Bureau/Polytechnique-2A/P3/INF 422/PI/INF442_Project2-master/src/data/Substitution matrices/BLOSUM62" #change it to your convenience to choose one of the matrices
-M=get_similarity_matrix(path,d)
 
-gamma=1
+path="C:/Users/antoi/OneDrive/Bureau/Polytechnique-2A/P3/INF 422/PI/INF442_Project2-master/src/data/Substitution matrices/IDENTITY" #change it to your convenience to choose one of the matrices
+
+M=get_similarity_matrix(path,d)
+print(M)
+
+gamma=0.1
 
 #Score
 def s(a,b) :
   sum=0
   n=p+q
   for i in range(n) :
-      ai=get(a,i)
-      bi=get(b,i)
-      sum+=M[ai][bi]
+      sum+=M[int(a[i])][int(b[i])]
   return(sum)
 
 def K2(U,V) :
     n_samples_1=U.shape[0]
-    n_samples_2=V.shape[1]
+
+    n_samples_2=V.shape[0]
     W=np.eye(n_samples_1,n_samples_2)
     
     for k in range(n_samples_1) :
         for j in range(n_samples_2):
-            W[k][j]=math.exp(-gamma*s(U[k],V[j]))
+            #W[k][j]=exp(-gamma*(s(U[k],V[j])))
+            W[k][j]=s(U[k],V[j])
     return(W)
 
-def PredictionSimiliarityKernel(train_data,train_labels,test_data,test_labels):
+def PredictionSimilarityMatrixKernel(train_d,train_l,test_d,test_l):
     #trains a SVM with train_data labelled with train_labels, tests on test_data and computes accuracy
-    print("fitting ...")
+    #print("fitting ...")
     rbf=svm.SVC(kernel=K2)
-    rbf.fit(train_data,train_labels)
-    print("OK")
+    rbf.fit(train_d,train_l)
+    #print("OK")
 
-    print("predicting...")
+    #print("predicting...")
     accuracy=0
     cont=0
-    for sequence in test_data :
-      predict=rbf.predict(sequence)[0][0]
-      if (predict==test_labels[cont]) :
+    for sequence in test_d :
+      predict=rbf.predict(sequence.reshape(1,-1))[0]
+      print(str(predict)+"vs. "+str(test_l[cont]))
+      if (predict==test_l[cont]) :
         accuracy+=1
       cont+=1
-    accuracy /= len(test_data)
-    print("Accuracy computed with substitution matrix")
-    print(str(100*accuracy)+" %")
+    accuracy /= len(test_d)
+
+    return(accuracy)
+    #print("Accuracy computed with substitution matrix")
+    #print(str(100*accuracy)+" %")
 
 
 if __name__ == "__main__":
