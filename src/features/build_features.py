@@ -125,7 +125,7 @@ def dict_from_alphabet(alphabet):
         return None
 
 
-def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet):
+def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet, ignore_first=True):
     """
     Return the list of all possible subsequence of aminoacids of fixed length word_length in a given list of protein
     sequences.
@@ -138,35 +138,40 @@ def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet):
     dim = len(alphabet)
 
     # Total length of encoded feature array
-    encoding_length = sum([len(seq) for seq in sequence_list]) - n_seq * word_length
+    if not ignore_first:
+        encoding_length = sum([len(seq) for seq in sequence_list]) - n_seq * word_length
+    else:
+        encoding_length = sum([len(seq) for seq in sequence_list]) - n_seq * (word_length + 1)
 
     # Defining fixed-length arrays for faster execution
     encoded_sequence = np.zeros((encoding_length, word_length * dim))
 
     # Target labels start with -1 as default as it is the most common
-    target_labels = -1 * np.ones(encoding_length)
+    target_labels = np.ones(encoding_length, dtype=int) * (-1)
 
     # Returns the predicted position of the cleavage site for a specific subsequence. Useful for accuracy comparison
-    predicted_pos = np.zeros(encoding_length)
+    predicted_pos = np.zeros(encoding_length, dtype=int)
     d = dict_from_alphabet(alphabet)
 
     # Iterates over the new arrays
     feature_iter = 0
 
+    ig = 1 if ignore_first else 0
+
     # Iterates over the sequence list
     for cp_iter in range(n_seq):
 
         # Iterates over each sequence
-        for seq_iter in range(len(sequence_list[cp_iter]) - word_length):
+        for seq_iter in range(len(sequence_list[cp_iter]) - word_length - ig):
 
             # Iterates over the specific subsequence
             for word_iter in range(word_length):
-                index = dim * word_iter + d[sequence_list[cp_iter][seq_iter + word_iter]]
+                index = dim * word_iter + d[sequence_list[cp_iter][seq_iter + ig + word_iter]]
                 encoded_sequence[feature_iter][index] = 1
 
             # Updating target label value and predicted cleavage position value
-            predicted_pos[feature_iter] = seq_iter + p
-            if cleav_pos[cp_iter] == seq_iter + p:
+            predicted_pos[feature_iter] = seq_iter + ig + p
+            if cleav_pos[cp_iter] == seq_iter + ig + p:
                 target_labels[feature_iter] = 1
 
             feature_iter += 1

@@ -1,11 +1,14 @@
 from abc import ABC
 
-from src.models.Estimator import Estimator
+from src.models.Estimator import metric_callable
 from src.features.build_features import *
 from src.models.Model import Model
 from src.utils import *
 from src.visualization.heatmap import *
 from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+
+data_file = "SIG_13.red.txt"
 
 
 def add_smoothing(num, denom, alpha=1.):
@@ -31,7 +34,7 @@ class ProbKernel:
     doi:10.1142/9789812799623_0060.
     """
 
-    def __init__(self, p, q, C, alpha=0.5, ignore_first=True):
+    def __init__(self, p, q, alpha=0.5, ignore_first=True):
         """
         Parameters
         ----------
@@ -52,7 +55,6 @@ class ProbKernel:
         """
         self.p = p
         self.q = q
-        self.C = C
         self.alpha = alpha
         self.ignore_first = ignore_first
         self.alphabet = None
@@ -142,12 +144,12 @@ class ProbKernel:
                     if seq_letter == letter:
                         total_freq[self.d[letter]] += 1
 
-        total_freq = np.log(total_freq / N)
+        total_freq = total_freq / N
 
         # Taking the logarithm
         for a in range(dim):
             for i in range(self.p + self.q):
-                score[a, i] = np.log(score[a, i]) - total_freq[a]
+                score[a, i] = score[a, i] / total_freq[a]
 
         self.score_matrix = score
 
@@ -157,56 +159,98 @@ class ProbKernel:
         if self.score_matrix is None:
             raise ValueError("Fit method must be executed first")
 
-        kernel = 1
+        kernel = 1.
 
         for iter in range(self.p + self.q):
-            aux = np.exp(self.score_matrix[self.d[seq_a[iter + ia]]])
+            aux = self.score_matrix[self.d[seq_a[iter + ia]]][iter]
             if seq_a[iter + ia] == seq_b[iter + ib]:
                 kernel *= aux + aux * aux
             else:
-                kernel *= aux * np.exp(self.score_matrix[self.d[seq_b[iter + ib]]])
+                kernel *= aux * self.score_matrix[self.d[seq_b[iter + ib]]][iter]
 
         return kernel
 
-    def return_kernel_matrix(self, seq_train_batch):
+    def return_kernel_matrix(self, seq_train_batch, seq_test_batch=None, norm=None):
         # Computes kernel matrix for use in the sklearn.svm.SVC() class.
+        if seq_test_batch is None:
+            seq_test_batch = seq_train_batch
 
         wl = self.p + self.q
-        n_seq = len(seq_train_batch)
-        kernel_size = 0
+        n_seq_train = len(seq_train_batch)
+        n_seq_test = len(seq_test_batch)
+        if not self.ignore_first:
+            km_len_train = sum([len(seq) for seq in seq_train_batch]) - n_seq_train * wl
+            km_len_test = sum([len(seq) for seq in seq_test_batch]) - n_seq_test * wl
+        else:
+            km_len_train = sum([len(seq) for seq in seq_train_batch]) - n_seq_train * (wl + 1)
+            km_len_test = sum([len(seq) for seq in seq_test_batch]) - n_seq_test * (wl + 1)
 
-        for seq in seq_train_batch:
-            kernel_size += len(seq)
+        self.kernel_matrix = np.ones((km_len_test, km_len_train)) * (-1)
 
-        kernel_size -= n_seq * wl
-
-        self.kernel_matrix = -1 * np.ones((kernel_size, kernel_size))
-
-        cont_a = 0
-        for test_seq_a in seq_train_batch:
+        cont_test = 0
+        for test_seq in seq_test_batch:
             if self.ignore_first:
-                test_seq_a = test_seq_a[1:]
+                test_seq = test_seq[1:]
 
-            na = len(test_seq_a)
-            ia = 0
-            while ia < na - wl:
-                cont_b = 0
-                for test_seq_b in seq_train_batch:
+            ntest = len(test_seq)
+            itest = 0
+            while itest < ntest - wl:
+                cont_train = 0
+                for train_seq in seq_train_batch:
                     if self.ignore_first:
-                        test_seq_b = test_seq_b[1:]
+                        train_seq = train_seq[1:]
 
-                    nb = len(test_seq_b)
-                    ib = 0
-                    while ib < nb - wl:
-                        if self.kernel_matrix[cont_a + ia, cont_b + ib] < 0:
-                            self.kernel_matrix[cont_a + ia, cont_b + ib] = self.pairwise_kernel(test_seq_a,
-                                                                              test_seq_b,
-                                                                              ia,
-                                                                              ib)
-                        ib += 1
-                    cont_b += nb - wl
-                ia += 1
-            cont_a += na - wl
+                    ntrain = len(train_seq)
+                    itrain = 0
+                    while itrain < ntrain - wl:
+                        if self.kernel_matrix[cont_test + itest, cont_train + itrain] < -0.9:
+                            self.kernel_matrix[cont_test + itest, cont_train + itrain] = self.pairwise_kernel(test_seq,
+                                                                                                              train_seq,
+                                                                                                              itest,
+                                                                                                              itrain)
+                        itrain += 1
+                    cont_train += ntrain - wl
+                itest += 1
+            cont_test += ntest - wl
 
-        return self.kernel_matrix
+        if norm is None:
+            norm_factor = np.amax(self.kernel_matrix) - np.amin(self.kernel_matrix)
+        else:
+            norm_factor = norm
+        print(norm_factor)
+        return self.kernel_matrix / norm_factor, norm_factor
 
+
+if __name__ == "__main__":
+    p = 13
+    q = 2
+    C = 1
+    ntrain = 50
+    ntest = 20
+    params = [C]
+
+    seq_list, cleav_pos = get_features(DATA_PATH + data_file)
+    alphabet = return_alphabet(seq_list)
+
+    X, Y, predicted_sites = get_encoded_features(DATA_PATH + data_file, p, q)
+    X_train, Y_train, _ = seq_list_encoding(seq_list[:ntrain], cleav_pos[:ntrain], p, q, alphabet)
+    X_test, Y_test, _ = seq_list_encoding(seq_list[+ntrain:+ntrain+ntest], cleav_pos[+ntrain:+ntrain+ntest], p, q, alphabet)
+
+    prob_kernel = ProbKernel(p, q)
+    prob_kernel.fit(seq_list[:ntrain], cleav_pos[:ntrain])
+    km, norm = prob_kernel.return_kernel_matrix(seq_list[:ntrain], seq_list[:ntrain])
+    estimator = SVC(C=0.00001, kernel='precomputed', class_weight='balanced')
+    #model = Model(estimator, params)
+    estimator.fit(km, Y_train)
+    km, _ = prob_kernel.return_kernel_matrix(seq_list[:ntrain], seq_list[ntrain:ntrain + ntest], norm)
+    pred_y = estimator.predict(km)
+
+    for metric in METRIC_LIST:
+        mc = metric_callable(metric)
+        print("({}, {})".format(metric, mc(Y_test, pred_y)))
+
+    # Getting features
+    # X, Y = get_encoded_features(DATA_PATH + data_file, p, q)
+
+    # Evaluating model
+    # score = model.evaluate(X, Y)

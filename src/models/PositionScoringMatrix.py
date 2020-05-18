@@ -1,4 +1,4 @@
-from src.models.Estimator import Estimator
+from src.models.Estimator import Estimator, metric_callable
 from src.features.build_features import *
 from src.models.Model import Model
 from src.utils import *
@@ -8,11 +8,12 @@ from sklearn.model_selection import train_test_split
 # Hyperparameters
 p_max = 16
 q_max = 16
-p = 11
-q = 4
+p = 15
+q = 1
 alpha = 0.5
 C = -58
 cv = 5
+test_size = 0.2
 
 
 def add_smoothing(num, denom, alpha=1.):
@@ -208,7 +209,8 @@ if __name__ == "__main__":
     # Data processing
     data_file = "SIG_13.red.txt"
     seq_list, cleavpos = get_features(DATA_PATH + data_file)
-    X_train, X_test, Y_train, Y_test = train_test_split(seq_list, cleavpos, test_size=0.2, random_state=42)
+    X_train, X_test, Y_train, Y_test = train_test_split(seq_list, cleavpos, test_size=test_size, random_state=0)
+
 
     p_list = np.arange(p_max - 1)
     q_list = np.arange(q_max - 1)
@@ -223,7 +225,7 @@ if __name__ == "__main__":
             for metric in METRIC_LIST:
                 matrix_dict[metric][pp][qq] = score[metric]
 
-    # Plotting
+    # Plotting heatmaps
     p_string = ["p="+str(p+1) for p in p_list]
     q_string = ["q=" + str(q+1) for q in q_list]
     for metric in METRIC_LIST:
