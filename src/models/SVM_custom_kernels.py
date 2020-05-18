@@ -29,6 +29,7 @@ def K3(U,V) :
     #Uand V are sequences encoded by the number corresponding to the letter with d.
     n_samples_1=U.shape[0]
     n_samples_2=V.shape[0]
+
     W=np.eye(n_samples_1,n_samples_2)
     
     for k in range(n_samples_1) :
@@ -67,7 +68,9 @@ def PredictionSimilarityKernel(train_d,train_l,test_d,test_l):
 
 #hyperparameters : substitution matrix and bandwidth
 
+
 path="C:/Users/antoi/OneDrive/Bureau/Polytechnique-2A/P3/INF 422/PI/INF442_Project2-master/src/data/Substitution matrices/IDENTITY" #change it to your convenience to choose one of the matrices
+
 M=get_similarity_matrix(path,d)
 print(M)
 
@@ -83,6 +86,7 @@ def s(a,b) :
 
 def K2(U,V) :
     n_samples_1=U.shape[0]
+
     n_samples_2=V.shape[0]
     W=np.eye(n_samples_1,n_samples_2)
     
@@ -113,6 +117,7 @@ def PredictionSimilarityMatrixKernel(train_d,train_l,test_d,test_l):
     return(accuracy)
     #print("Accuracy computed with substitution matrix")
     #print(str(100*accuracy)+" %")
+
 
 if __name__ == "__main__":
 

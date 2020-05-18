@@ -1,9 +1,6 @@
 import numpy as np
-from sklearn.model_selection import train_test_split, KFold, cross_val_score, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import cross_val_score, GridSearchCV
 from src.decorators import report_eval
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, roc_auc_score, precision_score, recall_score, \
-    f1_score
-from warnings import warn
 from itertools import product
 
 from src.utils import *
@@ -83,6 +80,36 @@ class Model:
         return score_dict
 
     def search(self, X, y, param_grid, scoring=None, best_score="f1", *args, **kwargs):
+        """
+        Perform a search over a parameter grid and return statistics on the best estimator's score.
+
+        If the model's custom attribute is set to False, the search is preformed by sklearn's GridSearchCV. Specific
+        arguments to this function can be passed via *args and **kwargs.
+
+        If the custom attribute is set to True, the function performs exhaustive search over the parameter grid using the
+        estimator's score method at each iteration.
+
+        Parameters
+        ----------
+        X: list or array-like, size (n_samples, n_features). Format depends on the class's estimator.
+            Training data.
+        Y: list or array-like, size (n_samples, n_features). Format depends on the class's estimator.
+            Target labels for training data.
+        param_grid: dictionary {str : list}
+            Dictionary of parameters to be considered on search and with a list of their respective values. Note:
+            the parameter key must be exactly the parameter's name to be called on estimator.
+        scoring: list or str
+            Defines one (or more) scoring metrics to be used on the search.
+        best_score: str
+            The score with which the best estimator will be chosen. Used only if the model's custom attribute is set to
+        False.
+
+        Returns
+        -------
+        A summary of the search results. If the model's custom attribute is set to False, this summary is actually an
+        instance of the fitted GridSearchCV class, whose results can be accesed via the cv_results_ attribute. If custom
+        is True, a dictionary with the best estimator and their score for each metric in the scoring argument.
+        """
         param_list = list(param_grid.keys())
 
         # Defining scoring
@@ -105,7 +132,7 @@ class Model:
 
             # Grid search
             for grid_pair in product(*list(param_grid.values())):
-                # Update estimator's parameteres for each iteration
+                # Update estimator's parameters for each iteration
                 search_args = dict(zip(list(param_grid.keys()), grid_pair))
                 self.estimator.set_params(**search_args)
 
@@ -113,6 +140,7 @@ class Model:
                 search_dict = self.estimator.score(X, y, cv=self.cv, scoring=eval_metric)
                 if isinstance(eval_metric, list):
                     for metric in eval_metric:
+                        # Updating the best parameter if necessary
                         if metric in best_search_dict:
                             if search_dict[metric] > best_search_dict[metric]:
                                 best_search_dict[metric] = [search_dict[metric], dict(zip(param_list, grid_pair))]
@@ -121,6 +149,7 @@ class Model:
                 else:
                     metric = eval_metric
                     if metric in best_search_dict:
+                        # Updating the best parameter if necessary
                         if search_dict[metric] > best_search_dict[metric]:
                             best_search_dict[metric] = [search_dict[metric], dict(zip(param_list, grid_pair))]
                     else:
