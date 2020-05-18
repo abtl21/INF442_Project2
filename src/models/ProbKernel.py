@@ -1,41 +1,26 @@
-from src.models.Estimator import Estimator, metric_callable
+from abc import ABC
+
+from src.models.Estimator import metric_callable
 from src.features.build_features import *
 from src.models.Model import Model
 from src.utils import *
 from src.visualization.heatmap import *
 from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
 
-# Hyperparameters
-p_max = 16
-q_max = 16
-p = 15
-q = 1
-alpha = 0.5
-C = -58
-cv = 5
-test_size = 0.2
+data_file = "SIG_13.red.txt"
 
 
 def add_smoothing(num, denom, alpha=1.):
     return (num + alpha) / (denom + alpha)
 
 
-def psm_accuracy(cleav_test_batch, cleav_predicted_batch):
-    accuracy = 0
-    if len(cleav_predicted_batch) > 0:
-        for i in range(len(cleav_test_batch)):
-            if i in cleav_predicted_batch:
-                for prev in cleav_predicted_batch[i]:
-                    if prev == cleav_test_batch[i]:
-                        accuracy += 1
-        accuracy /= len(cleav_predicted_batch)
-    return 100 * accuracy
-
-
-class PosScoringMatrix(Estimator):
+class ProbKernel:
     """
-    Class that implements an estimator of cleavage site location in protein sequences by the weight-matrix method,
-    detailed in [1]. Inherits the Estimator class.
+    Class that implements the probability kernel described in [1], using functions from the PosScoringMatrix class.
+
+    Its most important method is return_kernel_matrix, which returns a matrix that can be used as a custom kernel for
+    the SVC class.
 
     Suggested Changes
     -----------------
@@ -44,11 +29,12 @@ class PosScoringMatrix(Estimator):
 
     References
     ----------
-    [1] von Heijne, Gunnar. “A New Method for Predicting Signal Sequence Cleavage Sites.”
-    Nucleic Acids Research, vol. 14, no. 11, 1986, pp. 4683–90. DOI.org (Crossref), doi:10.1093/nar/14.11.4683.
+    [1] Vert, J. P. “SUPPORT VECTOR MACHINE PREDICTION OF SIGNAL PEPTIDE CLEAVAGE SITE USING A NEW CLASS OF KERNELS
+    FOR STRINGS.” Biocomputing 2002, WORLD SCIENTIFIC, 2001, pp. 649–60. DOI.org (Crossref),
+    doi:10.1142/9789812799623_0060.
     """
 
-    def __init__(self, p, q, C, alpha=0.5, ignore_first=True, write_log=True):
+    def __init__(self, p, q, alpha=0.5, ignore_first=True):
         """
         Parameters
         ----------
@@ -66,20 +52,15 @@ class PosScoringMatrix(Estimator):
         ignore_first: bool, defaults to True
             Whether to ignore the first amino-acid in every sequence, which generally corresponds to the same starting
             letter. Setting its value to False may introduce bias in the model.
-        write_log: bool, defaults to True
-            Whether to write the scoring results in PredictionLogs text file.
         """
-
-        super().__init__(p, q, write_log)
-        self.C = C
+        self.p = p
+        self.q = q
         self.alpha = alpha
         self.ignore_first = ignore_first
         self.alphabet = None
         self.d = None
         self.score_matrix = None
-
-    def set_params(self, **kwargs):
-        super().set_params(**kwargs)
+        self.kernel_matrix = None
 
     def word_score(self, sequence, lbound, ubound):
         # Computes the score of a subsequence. Auxiliary function for the predict() method.
@@ -125,8 +106,6 @@ class PosScoringMatrix(Estimator):
         # Computes the weight matrix relative to the training data seq_train_batch and their corresponding
         # cleavage sites cleav_train_batch.
 
-        super().fit(seq_train_batch, cleav_train_batch)
-
         if self.alphabet is None:
             self.alphabet = return_alphabet(seq_train_batch)
 
@@ -165,75 +144,113 @@ class PosScoringMatrix(Estimator):
                     if seq_letter == letter:
                         total_freq[self.d[letter]] += 1
 
-        total_freq = np.log(total_freq / N)
+        total_freq = total_freq / N
 
         # Taking the logarithm
         for a in range(dim):
             for i in range(self.p + self.q):
-                score[a, i] = np.log(score[a, i]) - total_freq[a]
+                score[a, i] = score[a, i] / total_freq[a]
 
         self.score_matrix = score
 
-    def predict(self, seq_test_batch):
-        # Performs prediction of a test batch and returns +1 or -1 labels for each subsequence.
-        # Used in the score method.
+    def pairwise_kernel(self, seq_a, seq_b, ia, ib):
+        # Calculates kernel score between two words given by the pair (sequence, index at sequence).
 
-        super().predict(seq_test_batch)
+        if self.score_matrix is None:
+            raise ValueError("Fit method must be executed first")
 
-        cleav_predictor = []
+        kernel = 1.
 
-        seq_cont = 0
+        for iter in range(self.p + self.q):
+            aux = self.score_matrix[self.d[seq_a[iter + ia]]][iter]
+            if seq_a[iter + ia] == seq_b[iter + ib]:
+                kernel *= aux + aux * aux
+            else:
+                kernel *= aux * self.score_matrix[self.d[seq_b[iter + ib]]][iter]
+
+        return kernel
+
+    def return_kernel_matrix(self, seq_train_batch, seq_test_batch=None, norm=None):
+        # Computes kernel matrix for use in the sklearn.svm.SVC() class.
+        if seq_test_batch is None:
+            seq_test_batch = seq_train_batch
+
+        wl = self.p + self.q
+        n_seq_train = len(seq_train_batch)
+        n_seq_test = len(seq_test_batch)
+        if not self.ignore_first:
+            km_len_train = sum([len(seq) for seq in seq_train_batch]) - n_seq_train * wl
+            km_len_test = sum([len(seq) for seq in seq_test_batch]) - n_seq_test * wl
+        else:
+            km_len_train = sum([len(seq) for seq in seq_train_batch]) - n_seq_train * (wl + 1)
+            km_len_test = sum([len(seq) for seq in seq_test_batch]) - n_seq_test * (wl + 1)
+
+        self.kernel_matrix = np.ones((km_len_test, km_len_train)) * (-1)
+
+        cont_test = 0
         for test_seq in seq_test_batch:
             if self.ignore_first:
                 test_seq = test_seq[1:]
 
-            n = len(test_seq)
-            i = 0
-            while i < n - self.p - self.q:
-                ws = self.word_score(test_seq, i, i + self.p + self.q)
-                if ws > self.C:
-                    cleav_predictor.append(1)
-                else:
-                    cleav_predictor.append(-1)
-                i += 1
-            seq_cont += 1
+            ntest = len(test_seq)
+            itest = 0
+            while itest < ntest - wl:
+                cont_train = 0
+                for train_seq in seq_train_batch:
+                    if self.ignore_first:
+                        train_seq = train_seq[1:]
 
-        return cleav_predictor
+                    ntrain = len(train_seq)
+                    itrain = 0
+                    while itrain < ntrain - wl:
+                        if self.kernel_matrix[cont_test + itest, cont_train + itrain] < -0.9:
+                            self.kernel_matrix[cont_test + itest, cont_train + itrain] = self.pairwise_kernel(test_seq,
+                                                                                                              train_seq,
+                                                                                                              itest,
+                                                                                                              itrain)
+                        itrain += 1
+                    cont_train += ntrain - wl
+                itest += 1
+            cont_test += ntest - wl
 
-    def score(self, seq_list, cleavpos, cv=5, scoring=METRIC_LIST):
-        # Uses super-class Estimator's built-in score method
-        return super().score(seq_list, cleavpos, cv=cv, scoring=scoring)
+        if norm is None:
+            norm_factor = np.amax(self.kernel_matrix) - np.amin(self.kernel_matrix)
+        else:
+            norm_factor = norm
+        print(norm_factor)
+        return self.kernel_matrix / norm_factor, norm_factor
 
 
 if __name__ == "__main__":
-    # Data processing
-    data_file = "SIG_13.red.txt"
-    seq_list, cleavpos = get_features(DATA_PATH + data_file)
-    X_train, X_test, Y_train, Y_test = train_test_split(seq_list, cleavpos, test_size=test_size, random_state=0)
+    p = 13
+    q = 2
+    C = 1
+    ntrain = 50
+    ntest = 20
+    params = [C]
 
+    seq_list, cleav_pos = get_features(DATA_PATH + data_file)
+    alphabet = return_alphabet(seq_list)
 
-    p_list = np.arange(p_max - 1)
-    q_list = np.arange(q_max - 1)
-    matrix_dict = dict(zip(METRIC_LIST, [np.zeros((p_max - 1, q_max - 1)) for i in range(len(METRIC_LIST))]))
+    X, Y, predicted_sites = get_encoded_features(DATA_PATH + data_file, p, q)
+    X_train, Y_train, _ = seq_list_encoding(seq_list[:ntrain], cleav_pos[:ntrain], p, q, alphabet)
+    X_test, Y_test, _ = seq_list_encoding(seq_list[+ntrain:+ntrain+ntest], cleav_pos[+ntrain:+ntrain+ntest], p, q, alphabet)
 
-    # Model training and assessment
-    for pp in p_list:
-        for qq in q_list:
-            estimator = PosScoringMatrix(pp + 1, qq + 1, C, alpha)
-            model = Model(estimator, [pp + 1, qq + 1, C], cv)
-            score = model.evaluate(X_train, Y_train)
-            for metric in METRIC_LIST:
-                matrix_dict[metric][pp][qq] = score[metric]
+    prob_kernel = ProbKernel(p, q)
+    prob_kernel.fit(seq_list[:ntrain], cleav_pos[:ntrain])
+    km, norm = prob_kernel.return_kernel_matrix(seq_list[:ntrain], seq_list[:ntrain])
+    estimator = SVC(C=0.00001, kernel='precomputed', class_weight='balanced')
+    #model = Model(estimator, params)
+    estimator.fit(km, Y_train)
+    km, _ = prob_kernel.return_kernel_matrix(seq_list[:ntrain], seq_list[ntrain:ntrain + ntest], norm)
+    pred_y = estimator.predict(km)
 
-    # Plotting heatmaps
-    p_string = ["p="+str(p+1) for p in p_list]
-    q_string = ["q=" + str(q+1) for q in q_list]
     for metric in METRIC_LIST:
-        fig, ax = plt.subplots()
+        mc = metric_callable(metric)
+        print("({}, {})".format(metric, mc(Y_test, pred_y)))
 
-        im, cbar = heatmap(matrix_dict[metric], p_string, q_string, ax=ax,
-                           cmap="YlGn", cbarlabel="Accuracy heatmap, metric={}".format(metric))
-        texts = annotate_heatmap(im, valfmt="{x:.2f}")
+    # Getting features
+    # X, Y = get_encoded_features(DATA_PATH + data_file, p, q)
 
-        fig.tight_layout()
-        plt.show()
+    # Evaluating model
+    # score = model.evaluate(X, Y)

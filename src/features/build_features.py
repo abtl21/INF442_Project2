@@ -28,7 +28,8 @@ def read_sequence(filepath):
 
     return protein_sequence, cleavage_site
 
-def get_similarity_matrix(filepath,d) :
+
+def get_similarity_matrix(filepath, d):
     """
     Retruns the similarity matrix as an array
     
@@ -51,6 +52,7 @@ def get_similarity_matrix(filepath,d) :
     
     d is the dictionnary for the equivalence letters<->numbers, which is not guaranteed to be the 'natural one'
     """
+
     
     M=np.eye(23,23)
     with open(filepath, 'r') as f:
@@ -70,6 +72,7 @@ def get_similarity_matrix(filepath,d) :
                         M[d[letter1]][d[column_entries[i]]]=line[i]
             line=f.readline()
     return(M)
+
 
 def return_alphabet(sequence_list):
     # Return the alphabet present in sequence_list. Useful for minimising the dimension for the SVM classifier.
@@ -126,7 +129,7 @@ def dict_from_alphabet(alphabet):
         return None
 
 
-def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet):
+def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet, ignore_first=True):
     """
     Return the list of all possible subsequence of aminoacids of fixed length word_length in a given list of protein
     sequences.
@@ -134,31 +137,56 @@ def seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet):
     Return a corresponding list of 1s and -1s depending on whether the cleavage site in included in a
     given subsequence or not.
     """
-    encoding_list = []
-    cls_cleav_pos = []
-    dim = len(alphabet)
-    d = dict_from_alphabet(alphabet)
+    n_seq = len(sequence_list)
     word_length = p + q
+    dim = len(alphabet)
 
-    for cp_iter in range(len(sequence_list)):
-        for seq_iter in range(len(sequence_list[cp_iter]) - word_length):
-            wordarray = np.zeros(word_length * dim)
+    # Total length of encoded feature array
+    if not ignore_first:
+        encoding_length = sum([len(seq) for seq in sequence_list]) - n_seq * word_length
+    else:
+        encoding_length = sum([len(seq) for seq in sequence_list]) - n_seq * (word_length + 1)
+
+    # Defining fixed-length arrays for faster execution
+    encoded_sequence = np.zeros((encoding_length, word_length * dim))
+
+    # Target labels start with -1 as default as it is the most common
+    target_labels = np.ones(encoding_length, dtype=int) * (-1)
+
+    # Returns the predicted position of the cleavage site for a specific subsequence. Useful for accuracy comparison
+    predicted_pos = np.zeros(encoding_length, dtype=int)
+    d = dict_from_alphabet(alphabet)
+
+    # Iterates over the new arrays
+    feature_iter = 0
+
+    ig = 1 if ignore_first else 0
+
+    # Iterates over the sequence list
+    for cp_iter in range(n_seq):
+
+        # Iterates over each sequence
+        for seq_iter in range(len(sequence_list[cp_iter]) - word_length - ig):
+
+            # Iterates over the specific subsequence
             for word_iter in range(word_length):
-                index = dim * word_iter + d[sequence_list[cp_iter][seq_iter + word_iter]]
-                wordarray[index] = 1
-            encoding_list.append(wordarray)
-            if cleav_pos[cp_iter] == seq_iter + p:
-                cls_cleav_pos.append(1)
-            else:
-                cls_cleav_pos.append(-1)
+                index = dim * word_iter + d[sequence_list[cp_iter][seq_iter + ig + word_iter]]
+                encoded_sequence[feature_iter][index] = 1
 
-    return np.array(encoding_list), np.array(cls_cleav_pos)
+            # Updating target label value and predicted cleavage position value
+            predicted_pos[feature_iter] = seq_iter + ig + p
+            if cleav_pos[cp_iter] == seq_iter + ig + p:
+                target_labels[feature_iter] = 1
+
+            feature_iter += 1
+
+    return encoded_sequence, target_labels, predicted_pos
+
 
 def get_encoded_features(filepath, p, q):
     sequence_list, cleav_pos = get_features(filepath)
     alphabet = return_alphabet(sequence_list)
     return seq_list_encoding(sequence_list, cleav_pos, p, q, alphabet)
-
 
 
 """if __name__ == "__main__":
